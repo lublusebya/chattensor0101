@@ -1,23 +1,16 @@
--- Private RAGE Chat (Script users only)
+-- RAGE Chat for Arceus X (uses Roblox Chat)
 -- Creator: tensor0101
 
 local player = game:GetService("Players").LocalPlayer
 local gui = Instance.new("ScreenGui")
-gui.Name = "PrivateRageChat"
+gui.Name = "RageChatArceus"
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 
 -- Сервисы
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-
--- Создаём событие для приватного чата (если ещё не создано)
-local chatEvent = ReplicatedStorage:FindFirstChild("PrivateRageChatEvent")
-if not chatEvent then
-    chatEvent = Instance.new("RemoteEvent")
-    chatEvent.Name = "PrivateRageChatEvent"
-    chatEvent.Parent = ReplicatedStorage
-end
+local RunService = game:GetService("RunService")
 
 -- Звук
 local sound = Instance.new("Sound")
@@ -50,7 +43,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 title.BackgroundTransparency = 0.3
-title.Text = "  PRIVATE RAGE — tensor0101"
+title.Text = "  RAGE Chat (Arceus) — tensor0101"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.GothamSemibold
@@ -74,7 +67,7 @@ close.Font = Enum.Font.GothamBold
 close.Parent = frame
 close.MouseButton1Click:Connect(function() gui:Destroy() end)
 
--- Кнопка сворачивания
+-- Кнопка сворачивания/разворачивания
 local minBtn = Instance.new("TextButton")
 minBtn.Size = UDim2.new(0, 30, 0, 30)
 minBtn.Position = UDim2.new(1, -60, 0, 0)
@@ -85,12 +78,22 @@ minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 minBtn.TextSize = 18
 minBtn.Font = Enum.Font.GothamBold
 minBtn.Parent = frame
+
 minBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
-    frame:TweenSize(isMinimized and minimizedSize or originalSize, "Out", "Quad", 0.3, true)
-    chatBox.Visible = not isMinimized
-    input.Visible = not isMinimized
-    sendBtn.Visible = not isMinimized
+    if isMinimized then
+        frame:TweenSize(minimizedSize, "Out", "Quad", 0.3, true)
+        minBtn.Text = "□"
+        chatBox.Visible = false
+        input.Visible = false
+        sendBtn.Visible = false
+    else
+        frame:TweenSize(originalSize, "Out", "Quad", 0.3, true)
+        minBtn.Text = "–"
+        chatBox.Visible = true
+        input.Visible = true
+        sendBtn.Visible = true
+    end
 end)
 
 -- Область чата
@@ -139,8 +142,8 @@ sendBtn.Font = Enum.Font.GothamSemibold
 sendBtn.Parent = frame
 Instance.new("UICorner", sendBtn).CornerRadius = UDim.new(0, 6)
 
--- Функция добавления сообщения
-local function addMessage(text, isOwn)
+-- Функция добавления сообщения в локальный список
+local function addMessage(text)
     local msg = Instance.new("TextLabel")
     msg.Size = UDim2.new(1, -10, 0, 20)
     msg.BackgroundTransparency = 1
@@ -178,12 +181,19 @@ local function notify(sender, text)
     n:Destroy()
 end
 
--- Отправка сообщения всем, у кого есть скрипт
-local function sendPrivateMessage()
+-- Отправка сообщения в стандартный чат Roblox
+local function sendPublicMessage()
     local text = input.Text
     if text ~= "" then
-        -- Отправляем через RemoteEvent
-        chatEvent:FireServer(text)
+        -- Отправляем через стандартный механизм
+        local sayRequest = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") and
+                           ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
+        if sayRequest then
+            sayRequest:FireServer(text, "All")
+        else
+            -- Fallback для старых игр
+            game:GetService("ReplicatedStorage"):WaitForChild("Chat"):FireServer(text)
+        end
         
         -- Показываем у себя
         addMessage(player.Name .. ": " .. text)
@@ -193,34 +203,27 @@ local function sendPrivateMessage()
     end
 end
 
-sendBtn.MouseButton1Click:Connect(sendPrivateMessage)
-input.FocusLost:Connect(function(enter) if enter then sendPrivateMessage() end end)
+sendBtn.MouseButton1Click:Connect(sendPublicMessage)
+input.FocusLost:Connect(function(enter) if enter then sendPublicMessage() end end)
 
--- Приём сообщений
-chatEvent.OnClientEvent:Connect(function(sender, message)
-    if sender ~= player then
-        addMessage(sender.Name .. ": " .. message)
-        notify(sender.Name, message)
+-- Приём сообщений от других игроков
+local function onPlayerChat(plr, message)
+    if plr ~= player then
+        addMessage(plr.Name .. ": " .. message)
+        notify(plr.Name, message)
         sound:Play()
     end
-end)
+end
 
--- Серверная часть (скрипт должен быть и на сервере для ретрансляции)
-local function setupServer()
-    if not game:GetService("RunService"):IsClient() then
-        local event = ReplicatedStorage:FindFirstChild("PrivateRageChatEvent")
-        if event then
-            event.OnServerEvent:Connect(function(plr, message)
-                -- Рассылаем всем игрокам
-                for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-                    if p ~= plr then
-                        event:FireClient(p, plr, message)
-                    end
-                end
-            end)
-        end
+-- Подключаемся к событию Chatted для всех игроков
+for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+    if plr ~= player then
+        plr.Chatted:Connect(function(msg) onPlayerChat(plr, msg) end)
     end
 end
-coroutine.wrap(setupServer)()
 
-addMessage("Приватный чат активирован. Видят только те, у кого есть скрипт.")
+game:GetService("Players").PlayerAdded:Connect(function(plr)
+    plr.Chatted:Connect(function(msg) onPlayerChat(plr, msg) end)
+end)
+
+addMessage("Чат для Arceus X запущен. Сообщения видят все в обычном чате.")
