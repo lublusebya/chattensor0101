@@ -1,4 +1,4 @@
--- Universal Chat GUI Script with Customization
+-- Universal Chat GUI Script with Customization (FULL WORKING VERSION)
 -- Creator: tensor0101 (Discord: tensor0101)
 -- Фичи: чат, уведомления, звук, кастомизация темы и прозрачности
 
@@ -154,7 +154,7 @@ minimizeBtn.MouseButton1Click:Connect(function()
     local targetSize = isMinimized and minimizedSize or originalSize
     local tween = TweenService:Create(frame, TweenInfo.new(0.3), {Size = targetSize})
     tween:Play()
-    
+
     chatGroup.Visible = not isMinimized
     dashboard.Visible = not isMinimized
     creditLabel.Visible = not isMinimized
@@ -256,7 +256,7 @@ themeBtn.Position = UDim2.new(0, 5, 0, 30)
 themeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 themeBtn.BackgroundTransparency = 0.2
 themeBtn.BorderSizePixel = 0
-themeBtn.Text = "Тёмная тема"  -- будет меняться
+themeBtn.Text = "Тёмная тема"
 themeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 themeBtn.TextSize = 16
 themeBtn.Font = Enum.Font.GothamSemibold
@@ -302,7 +302,7 @@ local sliderButtonCorner = Instance.new("UICorner")
 sliderButtonCorner.CornerRadius = UDim.new(0, 10)
 sliderButtonCorner.Parent = sliderButton
 
--- Выбор акцентного цвета (3 варианта для простоты)
+-- Выбор акцентного цвета (4 варианта)
 local colorLabel = Instance.new("TextLabel")
 colorLabel.Size = UDim2.new(1, -10, 0, 20)
 colorLabel.Position = UDim2.new(0, 5, 0, 140)
@@ -362,7 +362,6 @@ local function applyTheme(theme)
     creditLabel.TextColor3 = (theme == "dark") and Color3.fromRGB(180,180,180) or Color3.fromRGB(80,80,80)
     inputBox.TextColor3 = textColor
     inputBox.PlaceholderColor3 = textColor
-    -- Перекрасить кнопки? оставим как есть или тоже менять
 end
 
 themeBtn.MouseButton1Click:Connect(function()
@@ -404,7 +403,6 @@ for _, btnData in ipairs(colorButtons) do
         accentColor = btnData.color
         sendBtn.BackgroundColor3 = accentColor
         minimizeBtn.BackgroundColor3 = accentColor
-        -- можно также менять цвет обводки?
     end)
 end
 
