@@ -1,22 +1,25 @@
--- Universal Chat GUI Script (Black & White RAGE Edition)
--- Creator: tensor0101 (Discord: tensor0101)
--- Фичи: локальный чат, ч/б тема, мигающая обводка, сворачивание, звук.
+-- Private RAGE Chat (Script users only)
+-- Creator: tensor0101
 
 local player = game:GetService("Players").LocalPlayer
 local gui = Instance.new("ScreenGui")
-gui.Name = "ChatGUI_BW"
+gui.Name = "PrivateRageChat"
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 
 -- Сервисы
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local ChatService = game:GetService("Chat")
 
--- Отключаем стандартный чат (если поддерживается)
-pcall(function() ChatService:DisableChatWindows() end)
+-- Создаём событие для приватного чата (если ещё не создано)
+local chatEvent = ReplicatedStorage:FindFirstChild("PrivateRageChatEvent")
+if not chatEvent then
+    chatEvent = Instance.new("RemoteEvent")
+    chatEvent.Name = "PrivateRageChatEvent"
+    chatEvent.Parent = ReplicatedStorage
+end
 
--- Звук уведомления
+-- Звук
 local sound = Instance.new("Sound")
 sound.SoundId = "rbxasset://sounds/notification.mp3"
 sound.Volume = 0.5
@@ -24,86 +27,31 @@ sound.Parent = gui
 
 -- Настройки окна
 local isMinimized = false
-local originalSize = UDim2.new(0, 400, 0, 330)
-local minimizedSize = UDim2.new(0, 400, 0, 40)
+local originalSize = UDim2.new(0, 500, 0, 350)
+local minimizedSize = UDim2.new(0, 500, 0, 40)
 
 -- Основное окно
 local frame = Instance.new("Frame")
 frame.Size = originalSize
-frame.Position = UDim2.new(0.5, -200, 0.5, -165)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)  -- тёмно-серый
+frame.Position = UDim2.new(0.5, -250, 0.5, -175)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BackgroundTransparency = 0.2
-frame.BorderSizePixel = 0
 frame.Active = true
-frame.Draggable = false
+frame.Draggable = true
 frame.Parent = gui
 
--- Обводка с миганием (ч/б)
-local border = Instance.new("Frame")
-border.Size = UDim2.new(1, 6, 1, 6)
-border.Position = UDim2.new(0, -3, 0, -3)
-border.BackgroundTransparency = 1
-border.BorderSizePixel = 2
-border.BorderColor3 = Color3.fromRGB(255, 255, 255)
-border.BorderTransparency = 0.5
-border.Parent = frame
-
-local function animateBorder()
-    while border and border.Parent do
-        for _, color in ipairs({Color3.fromRGB(255,255,255), Color3.fromRGB(0,0,0)}) do
-            local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-            local goal = {BorderColor3 = color, BorderTransparency = 0.2}
-            local tween = TweenService:Create(border, tweenInfo, goal)
-            tween:Play()
-            wait(1)
-        end
-    end
-end
-coroutine.wrap(animateBorder)()
-
--- Плавное перетаскивание
-local dragging = false
-local dragInput, dragStart, startPos
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    if dragging and dragInput then
-        local delta = dragInput.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- Скругление углов
+-- Закругление
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = frame
 
--- Заголовок (чёрно-белый)
+-- Заголовок
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)  -- почти чёрный
+title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 title.BackgroundTransparency = 0.3
-title.BorderSizePixel = 0
-title.Text = "  RAGE Chat — tensor0101"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)    -- белый
+title.Text = "  PRIVATE RAGE — tensor0101"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.GothamSemibold
 title.TextSize = 16
@@ -113,185 +61,166 @@ local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 8)
 titleCorner.Parent = title
 
--- Кнопка закрытия (чёрная с белым текстом)
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -30, 0, 0)
-closeBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)      -- чёрный
-closeBtn.BackgroundTransparency = 0.3
-closeBtn.BorderSizePixel = 0
-closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)      -- белый
-closeBtn.TextSize = 18
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.Parent = frame
+-- Кнопка закрытия
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0, 30, 0, 30)
+close.Position = UDim2.new(1, -30, 0, 0)
+close.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+close.BackgroundTransparency = 0.3
+close.Text = "X"
+close.TextColor3 = Color3.fromRGB(255, 255, 255)
+close.TextSize = 18
+close.Font = Enum.Font.GothamBold
+close.Parent = frame
+close.MouseButton1Click:Connect(function() gui:Destroy() end)
 
-closeBtn.MouseButton1Click:Connect(function()
-    gui:Destroy()
-end)
-
--- Кнопка сворачивания (серая)
-local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
-minimizeBtn.Position = UDim2.new(1, -60, 0, 0)
-minimizeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)  -- серый
-minimizeBtn.BackgroundTransparency = 0.3
-minimizeBtn.BorderSizePixel = 0
-minimizeBtn.Text = "–"
-minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)      -- белый
-minimizeBtn.TextSize = 18
-minimizeBtn.Font = Enum.Font.GothamBold
-minimizeBtn.Parent = frame
-
-minimizeBtn.MouseButton1Click:Connect(function()
+-- Кнопка сворачивания
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 30, 0, 30)
+minBtn.Position = UDim2.new(1, -60, 0, 0)
+minBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+minBtn.BackgroundTransparency = 0.3
+minBtn.Text = "–"
+minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minBtn.TextSize = 18
+minBtn.Font = Enum.Font.GothamBold
+minBtn.Parent = frame
+minBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
-    local targetSize = isMinimized and minimizedSize or originalSize
-    local tween = TweenService:Create(frame, TweenInfo.new(0.3), {Size = targetSize})
-    tween:Play()
-    
-    chatList.Visible = not isMinimized
-    inputBox.Visible = not isMinimized
+    frame:TweenSize(isMinimized and minimizedSize or originalSize, "Out", "Quad", 0.3, true)
+    chatBox.Visible = not isMinimized
+    input.Visible = not isMinimized
     sendBtn.Visible = not isMinimized
-    creditLabel.Visible = not isMinimized
 end)
 
 -- Область чата
-local chatList = Instance.new("ScrollingFrame")
-chatList.Size = UDim2.new(1, -20, 1, -110)
-chatList.Position = UDim2.new(0, 10, 0, 40)
-chatList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)  -- тёмно-серый
-chatList.BackgroundTransparency = 0.2
-chatList.BorderSizePixel = 0
-chatList.CanvasSize = UDim2.new(0, 0, 0, 0)
-chatList.ScrollBarThickness = 8
-chatList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-chatList.Parent = frame
+local chatBox = Instance.new("ScrollingFrame")
+chatBox.Size = UDim2.new(1, -10, 1, -80)
+chatBox.Position = UDim2.new(0, 5, 0, 35)
+chatBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+chatBox.BackgroundTransparency = 0.2
+chatBox.BorderSizePixel = 0
+chatBox.CanvasSize = UDim2.new(0, 0, 0, 0)
+chatBox.ScrollBarThickness = 8
+chatBox.Parent = frame
 
-local listCorner = Instance.new("UICorner")
-listCorner.CornerRadius = UDim.new(0, 6)
-listCorner.Parent = chatList
-
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 5)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-layout.VerticalAlignment = Enum.VerticalAlignment.Top
-layout.Parent = chatList
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 5)
+listLayout.Parent = chatBox
+listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    chatBox.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+end)
 
 -- Поле ввода
-local inputBox = Instance.new("TextBox")
-inputBox.Size = UDim2.new(1, -90, 0, 30)
-inputBox.Position = UDim2.new(0, 10, 1, -70)
-inputBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)  -- серый
-inputBox.BackgroundTransparency = 0.2
-inputBox.BorderSizePixel = 0
-inputBox.PlaceholderText = "Введите сообщение..."
-inputBox.Text = ""
-inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)      -- белый
-inputBox.TextSize = 14
-inputBox.Font = Enum.Font.Gotham
-inputBox.ClearTextOnFocus = false
-inputBox.Parent = frame
+local input = Instance.new("TextBox")
+input.Size = UDim2.new(0.7, -5, 0, 30)
+input.Position = UDim2.new(0, 5, 1, -40)
+input.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+input.BackgroundTransparency = 0.2
+input.PlaceholderText = "Сообщение..."
+input.Text = ""
+input.TextColor3 = Color3.fromRGB(255, 255, 255)
+input.TextSize = 14
+input.Font = Enum.Font.Gotham
+input.ClearTextOnFocus = false
+input.Parent = frame
+Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
 
-local inputCorner = Instance.new("UICorner")
-inputCorner.CornerRadius = UDim.new(0, 6)
-inputCorner.Parent = inputBox
-
--- Кнопка отправки (белая с чёрным текстом)
+-- Кнопка отправки
 local sendBtn = Instance.new("TextButton")
-sendBtn.Size = UDim2.new(0, 70, 0, 30)
-sendBtn.Position = UDim2.new(1, -80, 1, -70)
-sendBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)  -- белый
+sendBtn.Size = UDim2.new(0.3, -10, 0, 30)
+sendBtn.Position = UDim2.new(0.7, 0, 1, -40)
+sendBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 sendBtn.BackgroundTransparency = 0.2
-sendBtn.BorderSizePixel = 0
 sendBtn.Text = "Отправить"
-sendBtn.TextColor3 = Color3.fromRGB(0, 0, 0)              -- чёрный
+sendBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 sendBtn.TextSize = 14
 sendBtn.Font = Enum.Font.GothamSemibold
 sendBtn.Parent = frame
-
-local sendCorner = Instance.new("UICorner")
-sendCorner.CornerRadius = UDim.new(0, 6)
-sendCorner.Parent = sendBtn
-
--- Надпись с автором
-local creditLabel = Instance.new("TextLabel")
-creditLabel.Size = UDim2.new(1, -20, 0, 20)
-creditLabel.Position = UDim2.new(0, 10, 1, -30)
-creditLabel.BackgroundTransparency = 1
-creditLabel.Text = "Создатель: tensor0101 (Discord: tensor0101)"
-creditLabel.TextColor3 = Color3.fromRGB(180, 180, 180)    -- светло-серый
-creditLabel.TextSize = 12
-creditLabel.Font = Enum.Font.Gotham
-creditLabel.TextXAlignment = Enum.TextXAlignment.Center
-creditLabel.Parent = frame
+Instance.new("UICorner", sendBtn).CornerRadius = UDim.new(0, 6)
 
 -- Функция добавления сообщения
-local function addMessage(text)
+local function addMessage(text, isOwn)
     local msg = Instance.new("TextLabel")
     msg.Size = UDim2.new(1, -10, 0, 20)
     msg.BackgroundTransparency = 1
     msg.Text = text
-    msg.TextColor3 = Color3.fromRGB(255, 255, 255)          -- белый
+    msg.TextColor3 = Color3.fromRGB(255, 255, 255)
     msg.TextSize = 14
     msg.Font = Enum.Font.Gotham
     msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.Parent = chatList
+    msg.Parent = chatBox
 end
 
--- Функция показа уведомления
-local function showNotification(sender, message)
-    local notification = Instance.new("Frame")
-    notification.Size = UDim2.new(0, 250, 0, 60)
-    notification.Position = UDim2.new(1, -260, 1, -80)
-    notification.BackgroundColor3 = Color3.fromRGB(20, 20, 20)  -- чёрный
-    notification.BackgroundTransparency = 0.3
-    notification.BorderSizePixel = 0
-    notification.Parent = gui
+-- Уведомление
+local function notify(sender, text)
+    local n = Instance.new("Frame")
+    n.Size = UDim2.new(0, 250, 0, 60)
+    n.Position = UDim2.new(1, -260, 1, -80)
+    n.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    n.BackgroundTransparency = 0.3
+    n.Parent = gui
+    Instance.new("UICorner", n).CornerRadius = UDim.new(0, 8)
 
-    local notifCorner = Instance.new("UICorner")
-    notifCorner.CornerRadius = UDim.new(0, 8)
-    notifCorner.Parent = notification
+    local nt = Instance.new("TextLabel")
+    nt.Size = UDim2.new(1, -10, 1, -10)
+    nt.Position = UDim2.new(0, 5, 0, 5)
+    nt.BackgroundTransparency = 1
+    nt.Text = sender .. ": " .. text
+    nt.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nt.TextSize = 14
+    nt.Font = Enum.Font.Gotham
+    nt.TextWrapped = true
+    nt.TextXAlignment = Enum.TextXAlignment.Left
+    nt.Parent = n
 
-    local notifText = Instance.new("TextLabel")
-    notifText.Size = UDim2.new(1, -10, 1, -10)
-    notifText.Position = UDim2.new(0, 5, 0, 5)
-    notifText.BackgroundTransparency = 1
-    notifText.Text = sender .. ": " .. message
-    notifText.TextColor3 = Color3.fromRGB(255, 255, 255)        -- белый
-    notifText.TextSize = 14
-    notifText.Font = Enum.Font.Gotham
-    notifText.TextWrapped = true
-    notifText.TextXAlignment = Enum.TextXAlignment.Left
-    notifText.TextYAlignment = Enum.TextYAlignment.Top
-    notifText.Parent = notification
-
-    -- Анимация
-    local fadeIn = TweenService:Create(notification, TweenInfo.new(0.3), {BackgroundTransparency = 0.3})
-    fadeIn:Play()
     wait(3)
-    local fadeOut = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 1})
-    fadeOut:Play()
-    fadeOut.Completed:Connect(function()
-        notification:Destroy()
-    end)
+    n:Destroy()
 end
 
--- Отправка сообщения
-local function sendMessage()
-    local text = inputBox.Text
+-- Отправка сообщения всем, у кого есть скрипт
+local function sendPrivateMessage()
+    local text = input.Text
     if text ~= "" then
-        local fullMessage = player.Name .. ": " .. text
-        addMessage(fullMessage)
-        showNotification(player.Name, text)
-        sound:Play()  -- звук при отправке
-        inputBox.Text = ""
+        -- Отправляем через RemoteEvent
+        chatEvent:FireServer(text)
+        
+        -- Показываем у себя
+        addMessage(player.Name .. ": " .. text)
+        notify(player.Name, text)
+        sound:Play()
+        input.Text = ""
     end
 end
 
-sendBtn.MouseButton1Click:Connect(sendMessage)
-inputBox.FocusLost:Connect(function(enter)
-    if enter then sendMessage() end
+sendBtn.MouseButton1Click:Connect(sendPrivateMessage)
+input.FocusLost:Connect(function(enter) if enter then sendPrivateMessage() end end)
+
+-- Приём сообщений
+chatEvent.OnClientEvent:Connect(function(sender, message)
+    if sender ~= player then
+        addMessage(sender.Name .. ": " .. message)
+        notify(sender.Name, message)
+        sound:Play()
+    end
 end)
 
--- Приветствие
-addMessage("Добро пожаловать. Чёрно-белый RAGE чат.")
+-- Серверная часть (скрипт должен быть и на сервере для ретрансляции)
+local function setupServer()
+    if not game:GetService("RunService"):IsClient() then
+        local event = ReplicatedStorage:FindFirstChild("PrivateRageChatEvent")
+        if event then
+            event.OnServerEvent:Connect(function(plr, message)
+                -- Рассылаем всем игрокам
+                for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+                    if p ~= plr then
+                        event:FireClient(p, plr, message)
+                    end
+                end
+            end)
+        end
+    end
+end
+coroutine.wrap(setupServer)()
+
+addMessage("Приватный чат активирован. Видят только те, у кого есть скрипт.")
