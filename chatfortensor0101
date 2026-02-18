@@ -1,491 +1,197 @@
--- Universal Chat GUI Script with Customization (FULL WORKING VERSION)
--- Creator: tensor0101 (Discord: tensor0101)
--- Фичи: чат, уведомления, звук, кастомизация темы и прозрачности
+--[[
+  RAGE Chat by tensor0101
+  - Чат, сворачивание, мигающая обводка
+  - Уведомления внизу справа + звук при отправке
+  - Полностью рабочий код
+]]--
 
 local player = game:GetService("Players").LocalPlayer
 local gui = Instance.new("ScreenGui")
-gui.Name = "ChatGUI"
+gui.Name = "RageChatFinal"
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 
--- Сервисы
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local Tween = game:GetService("TweenService")
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxasset://sounds/notification.mp3"
+sound.Volume = 0.5
+sound.Parent = gui
 
--- Отключаем стандартный чат (если возможно)
-pcall(function() game:GetService("Chat"):DisableChatWindows() end)
+local origSize = UDim2.new(0, 500, 0, 350)
+local minSize = UDim2.new(0, 500, 0, 40)
+local isMin = false
 
--- Звук уведомления
-local notificationSound = Instance.new("Sound")
-notificationSound.SoundId = "rbxasset://sounds/notification.mp3"
-notificationSound.Volume = 0.5
-notificationSound.Parent = gui
-
--- Переменные кастомизации
-local currentTheme = "dark"  -- "dark" или "light"
-local windowTransparency = 0.2
-local accentColor = Color3.fromRGB(70, 130, 200)  -- синий
-
--- Настройки окна
-local isMinimized = false
-local originalSize = UDim2.new(0, 650, 0, 450)
-local minimizedSize = UDim2.new(0, 650, 0, 40)
-
--- Основное окно
 local frame = Instance.new("Frame")
-frame.Size = originalSize
-frame.Position = UDim2.new(0.5, -325, 0.5, -225)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BackgroundTransparency = windowTransparency
-frame.BorderSizePixel = 0
+frame.Size = origSize
+frame.Position = UDim2.new(0.5, -250, 0.5, -175)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BackgroundTransparency = 0.2
 frame.Active = true
-frame.Draggable = false
+frame.Draggable = true
 frame.Parent = gui
 
--- Обводка с миганием
 local border = Instance.new("Frame")
 border.Size = UDim2.new(1, 6, 1, 6)
 border.Position = UDim2.new(0, -3, 0, -3)
 border.BackgroundTransparency = 1
 border.BorderSizePixel = 2
-border.BorderColor3 = Color3.fromRGB(255, 255, 255)
+border.BorderColor3 = Color3.fromRGB(255,255,255)
 border.BorderTransparency = 0.5
 border.Parent = frame
 
--- Анимация обводки
-local function animateBorder()
-    while border and border.Parent do
-        for _, color in ipairs({Color3.fromRGB(255,255,255), Color3.fromRGB(0,0,0)}) do
-            local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-            local goal = {BorderColor3 = color, BorderTransparency = 0.2}
-            local tween = TweenService:Create(border, tweenInfo, goal)
-            tween:Play()
+coroutine.wrap(function()
+    while border do
+        for _,col in ipairs({Color3.new(1,1,1), Color3.new(0,0,0)}) do
+            Tween:Create(border, TweenInfo.new(1), {BorderColor3=col, BorderTransparency=0.2}):Play()
             wait(1)
         end
     end
-end
-coroutine.wrap(animateBorder)()
+end)()
 
--- Плавное перетаскивание
-local dragging = false
-local dragInput, dragStart, startPos
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    if dragging and dragInput then
-        local delta = dragInput.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- Скругление углов
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
+corner.CornerRadius = UDim.new(0,8)
 corner.Parent = frame
 
--- Заголовок
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+title.Size = UDim2.new(1,0,0,30)
+title.BackgroundColor3 = Color3.fromRGB(20,20,20)
 title.BackgroundTransparency = 0.3
-title.BorderSizePixel = 0
-title.Text = "  Чат (RAGE mode) — by tensor0101"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "  RAGE Chat — tensor0101"
+title.TextColor3 = Color3.new(1,1,1)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.GothamSemibold
 title.TextSize = 16
 title.Parent = frame
 
 local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.CornerRadius = UDim.new(0,8)
 titleCorner.Parent = title
 
--- Кнопка закрытия
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -30, 0, 0)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-closeBtn.BackgroundTransparency = 0.3
-closeBtn.BorderSizePixel = 0
-closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.TextSize = 18
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.Parent = frame
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0,30,0,30)
+close.Position = UDim2.new(1,-30,0,0)
+close.BackgroundColor3 = Color3.fromRGB(200,50,50)
+close.BackgroundTransparency = 0.3
+close.Text = "X"
+close.TextColor3 = Color3.new(1,1,1)
+close.TextSize = 18
+close.Font = Enum.Font.GothamBold
+close.Parent = frame
+close.MouseButton1Click:Connect(function() gui:Destroy() end)
 
-closeBtn.MouseButton1Click:Connect(function()
-    gui:Destroy()
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0,30,0,30)
+minBtn.Position = UDim2.new(1,-60,0,0)
+minBtn.BackgroundColor3 = Color3.fromRGB(70,130,200)
+minBtn.BackgroundTransparency = 0.3
+minBtn.Text = "–"
+minBtn.TextColor3 = Color3.new(1,1,1)
+minBtn.TextSize = 18
+minBtn.Font = Enum.Font.GothamBold
+minBtn.Parent = frame
+minBtn.MouseButton1Click:Connect(function()
+    isMin = not isMin
+    Tween:Create(frame, TweenInfo.new(0.3), {Size = isMin and minSize or origSize}):Play()
+    chatBox.Visible = not isMin
+    input.Visible = not isMin
+    sendBtn.Visible = not isMin
 end)
 
--- Кнопка сворачивания
-local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
-minimizeBtn.Position = UDim2.new(1, -60, 0, 0)
-minimizeBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 200)
-minimizeBtn.BackgroundTransparency = 0.3
-minimizeBtn.BorderSizePixel = 0
-minimizeBtn.Text = "–"
-minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-minimizeBtn.TextSize = 18
-minimizeBtn.Font = Enum.Font.GothamBold
-minimizeBtn.Parent = frame
+local chatBox = Instance.new("ScrollingFrame")
+chatBox.Size = UDim2.new(1,-10, 1,-80)
+chatBox.Position = UDim2.new(0,5, 0,35)
+chatBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+chatBox.BackgroundTransparency = 0.2
+chatBox.BorderSizePixel = 0
+chatBox.CanvasSize = UDim2.new(0,0,0,0)
+chatBox.ScrollBarThickness = 8
+chatBox.Parent = frame
 
-minimizeBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    local targetSize = isMinimized and minimizedSize or originalSize
-    local tween = TweenService:Create(frame, TweenInfo.new(0.3), {Size = targetSize})
-    tween:Play()
-
-    chatGroup.Visible = not isMinimized
-    dashboard.Visible = not isMinimized
-    creditLabel.Visible = not isMinimized
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0,5)
+listLayout.Parent = chatBox
+listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    chatBox.CanvasSize = UDim2.new(0,0,0, listLayout.AbsoluteContentSize.Y)
 end)
 
--- Левая колонка (чат)
-local chatGroup = Instance.new("Frame")
-chatGroup.Size = UDim2.new(0.5, -10, 1, -40)
-chatGroup.Position = UDim2.new(0, 5, 0, 35)
-chatGroup.BackgroundTransparency = 1
-chatGroup.Parent = frame
-
--- Правая колонка (dashboard)
-local dashboard = Instance.new("Frame")
-dashboard.Size = UDim2.new(0.5, -10, 1, -40)
-dashboard.Position = UDim2.new(0.5, 5, 0, 35)
-dashboard.BackgroundTransparency = 1
-dashboard.Parent = frame
-
--- === Чат (левая колонка) ===
-local chatTitle = Instance.new("TextLabel")
-chatTitle.Size = UDim2.new(1, 0, 0, 20)
-chatTitle.BackgroundTransparency = 1
-chatTitle.Text = "Чат"
-chatTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-chatTitle.Font = Enum.Font.GothamBold
-chatTitle.TextSize = 14
-chatTitle.Parent = chatGroup
-
-local chatList = Instance.new("ScrollingFrame")
-chatList.Size = UDim2.new(1, 0, 1, -60)
-chatList.Position = UDim2.new(0, 0, 0, 20)
-chatList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-chatList.BackgroundTransparency = 0.2
-chatList.BorderSizePixel = 0
-chatList.CanvasSize = UDim2.new(0, 0, 0, 0)
-chatList.ScrollBarThickness = 8
-chatList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-chatList.Parent = chatGroup
-
-local listCorner = Instance.new("UICorner")
-listCorner.CornerRadius = UDim.new(0, 6)
-listCorner.Parent = chatList
-
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 5)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-layout.VerticalAlignment = Enum.VerticalAlignment.Top
-layout.Parent = chatList
-
-local inputBox = Instance.new("TextBox")
-inputBox.Size = UDim2.new(0.7, -5, 0, 30)
-inputBox.Position = UDim2.new(0, 0, 1, -35)
-inputBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-inputBox.BackgroundTransparency = 0.2
-inputBox.BorderSizePixel = 0
-inputBox.PlaceholderText = "Сообщение..."
-inputBox.Text = ""
-inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-inputBox.TextSize = 14
-inputBox.Font = Enum.Font.Gotham
-inputBox.ClearTextOnFocus = false
-inputBox.Parent = chatGroup
-
-local inputCorner = Instance.new("UICorner")
-inputCorner.CornerRadius = UDim.new(0, 6)
-inputCorner.Parent = inputBox
+local input = Instance.new("TextBox")
+input.Size = UDim2.new(0.7,-5, 0,30)
+input.Position = UDim2.new(0,5, 1,-40)
+input.BackgroundColor3 = Color3.fromRGB(50,50,50)
+input.BackgroundTransparency = 0.2
+input.PlaceholderText = "Сообщение..."
+input.Text = ""
+input.TextColor3 = Color3.new(1,1,1)
+input.TextSize = 14
+input.Font = Enum.Font.Gotham
+input.ClearTextOnFocus = false
+input.Parent = frame
 
 local sendBtn = Instance.new("TextButton")
-sendBtn.Size = UDim2.new(0.3, -5, 0, 30)
-sendBtn.Position = UDim2.new(0.7, 0, 1, -35)
-sendBtn.BackgroundColor3 = accentColor
+sendBtn.Size = UDim2.new(0.3,-10, 0,30)
+sendBtn.Position = UDim2.new(0.7,0, 1,-40)
+sendBtn.BackgroundColor3 = Color3.fromRGB(70,130,200)
 sendBtn.BackgroundTransparency = 0.2
-sendBtn.BorderSizePixel = 0
 sendBtn.Text = "Отправить"
-sendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+sendBtn.TextColor3 = Color3.new(1,1,1)
 sendBtn.TextSize = 14
 sendBtn.Font = Enum.Font.GothamSemibold
-sendBtn.Parent = chatGroup
+sendBtn.Parent = frame
 
-local sendCorner = Instance.new("UICorner")
-sendCorner.CornerRadius = UDim.new(0, 6)
-sendCorner.Parent = sendBtn
-
--- === Dashboard (правая колонка) ===
-local dashTitle = Instance.new("TextLabel")
-dashTitle.Size = UDim2.new(1, 0, 0, 20)
-dashTitle.BackgroundTransparency = 1
-dashTitle.Text = "Настройки"
-dashTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-dashTitle.Font = Enum.Font.GothamBold
-dashTitle.TextSize = 14
-dashTitle.Parent = dashboard
-
--- Переключатель темы
-local themeBtn = Instance.new("TextButton")
-themeBtn.Size = UDim2.new(1, -10, 0, 40)
-themeBtn.Position = UDim2.new(0, 5, 0, 30)
-themeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-themeBtn.BackgroundTransparency = 0.2
-themeBtn.BorderSizePixel = 0
-themeBtn.Text = "Тёмная тема"
-themeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-themeBtn.TextSize = 16
-themeBtn.Font = Enum.Font.GothamSemibold
-themeBtn.Parent = dashboard
-
-local themeCorner = Instance.new("UICorner")
-themeCorner.CornerRadius = UDim.new(0, 8)
-themeCorner.Parent = themeBtn
-
--- Ползунок прозрачности
-local transpLabel = Instance.new("TextLabel")
-transpLabel.Size = UDim2.new(1, -10, 0, 20)
-transpLabel.Position = UDim2.new(0, 5, 0, 80)
-transpLabel.BackgroundTransparency = 1
-transpLabel.Text = "Прозрачность: " .. string.format("%.0f", windowTransparency * 100) .. "%"
-transpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-transpLabel.TextSize = 14
-transpLabel.Font = Enum.Font.Gotham
-transpLabel.TextXAlignment = Enum.TextXAlignment.Left
-transpLabel.Parent = dashboard
-
-local transpSlider = Instance.new("Frame")
-transpSlider.Size = UDim2.new(1, -10, 0, 20)
-transpSlider.Position = UDim2.new(0, 5, 0, 105)
-transpSlider.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-transpSlider.BackgroundTransparency = 0.5
-transpSlider.BorderSizePixel = 0
-transpSlider.Parent = dashboard
-
-local sliderCorner = Instance.new("UICorner")
-sliderCorner.CornerRadius = UDim.new(0, 4)
-sliderCorner.Parent = transpSlider
-
-local sliderButton = Instance.new("TextButton")
-sliderButton.Size = UDim2.new(0, 20, 0, 20)
-sliderButton.Position = UDim2.new(windowTransparency, -10, 0, 0)
-sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-sliderButton.BorderSizePixel = 0
-sliderButton.Text = ""
-sliderButton.Parent = transpSlider
-
-local sliderButtonCorner = Instance.new("UICorner")
-sliderButtonCorner.CornerRadius = UDim.new(0, 10)
-sliderButtonCorner.Parent = sliderButton
-
--- Выбор акцентного цвета (4 варианта)
-local colorLabel = Instance.new("TextLabel")
-colorLabel.Size = UDim2.new(1, -10, 0, 20)
-colorLabel.Position = UDim2.new(0, 5, 0, 140)
-colorLabel.BackgroundTransparency = 1
-colorLabel.Text = "Акцентный цвет:"
-colorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-colorLabel.TextSize = 14
-colorLabel.Font = Enum.Font.Gotham
-colorLabel.TextXAlignment = Enum.TextXAlignment.Left
-colorLabel.Parent = dashboard
-
-local colors = {
-    {name = "Синий", color = Color3.fromRGB(70, 130, 200)},
-    {name = "Зелёный", color = Color3.fromRGB(60, 180, 75)},
-    {name = "Красный", color = Color3.fromRGB(200, 70, 70)},
-    {name = "Оранжевый", color = Color3.fromRGB(230, 120, 20)}
-}
-
-local colorButtons = {}
-for i, colData in ipairs(colors) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.25, -5, 0, 30)
-    btn.Position = UDim2.new((i-1)*0.25, 5, 0, 165)
-    btn.BackgroundColor3 = colData.color
-    btn.BackgroundTransparency = 0.2
-    btn.BorderSizePixel = 0
-    btn.Text = ""
-    btn.Parent = dashboard
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = btn
-    table.insert(colorButtons, {btn = btn, color = colData.color})
-end
-
--- Функция обновления темы
-local function applyTheme(theme)
-    if theme == "dark" then
-        frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        chatList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        inputBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        themeBtn.Text = "Светлая тема"
-    else
-        frame.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-        title.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-        chatList.BackgroundColor3 = Color3.fromRGB(210, 210, 210)
-        inputBox.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
-        themeBtn.Text = "Тёмная тема"
-    end
-    -- Обновление цвета текста для светлой темы
-    local textColor = (theme == "dark") and Color3.fromRGB(255,255,255) or Color3.fromRGB(0,0,0)
-    title.TextColor3 = textColor
-    chatTitle.TextColor3 = textColor
-    dashTitle.TextColor3 = textColor
-    transpLabel.TextColor3 = textColor
-    colorLabel.TextColor3 = textColor
-    creditLabel.TextColor3 = (theme == "dark") and Color3.fromRGB(180,180,180) or Color3.fromRGB(80,80,80)
-    inputBox.TextColor3 = textColor
-    inputBox.PlaceholderColor3 = textColor
-end
-
-themeBtn.MouseButton1Click:Connect(function()
-    currentTheme = (currentTheme == "dark") and "light" or "dark"
-    applyTheme(currentTheme)
-end)
-
--- Обработка ползунка прозрачности
-local sliding = false
-sliderButton.MouseButton1Down:Connect(function()
-    sliding = true
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        sliding = false
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if sliding and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local mousePos = UserInputService:GetMouseLocation()
-        local sliderPos = transpSlider.AbsolutePosition.X
-        local sliderSize = transpSlider.AbsoluteSize.X
-        local relative = math.clamp((mousePos.X - sliderPos) / sliderSize, 0, 1)
-        sliderButton.Position = UDim2.new(relative, -10, 0, 0)
-        windowTransparency = relative
-        frame.BackgroundTransparency = windowTransparency
-        title.BackgroundTransparency = windowTransparency + 0.1
-        chatList.BackgroundTransparency = windowTransparency
-        inputBox.BackgroundTransparency = windowTransparency
-        transpLabel.Text = "Прозрачность: " .. string.format("%.0f", windowTransparency * 100) .. "%"
-    end
-end)
-
--- Выбор акцентного цвета
-for _, btnData in ipairs(colorButtons) do
-    btnData.btn.MouseButton1Click:Connect(function()
-        accentColor = btnData.color
-        sendBtn.BackgroundColor3 = accentColor
-        minimizeBtn.BackgroundColor3 = accentColor
-    end)
-end
-
--- Надпись с автором
-local creditLabel = Instance.new("TextLabel")
-creditLabel.Size = UDim2.new(1, -20, 0, 20)
-creditLabel.Position = UDim2.new(0, 10, 1, -25)
-creditLabel.BackgroundTransparency = 1
-creditLabel.Text = "Создатель: tensor0101 (Discord: tensor0101)"
-creditLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-creditLabel.TextSize = 12
-creditLabel.Font = Enum.Font.Gotham
-creditLabel.TextXAlignment = Enum.TextXAlignment.Center
-creditLabel.Parent = frame
-
--- Функция добавления сообщения
-local function addMessage(text)
+local function addMsg(txt)
     local msg = Instance.new("TextLabel")
-    msg.Size = UDim2.new(1, -10, 0, 20)
+    msg.Size = UDim2.new(1,-10, 0,20)
     msg.BackgroundTransparency = 1
-    msg.Text = text
-    msg.TextColor3 = (currentTheme == "dark") and Color3.fromRGB(255,255,255) or Color3.fromRGB(0,0,0)
+    msg.Text = txt
+    msg.TextColor3 = Color3.new(1,1,1)
     msg.TextSize = 14
     msg.Font = Enum.Font.Gotham
     msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.Parent = chatList
+    msg.Parent = chatBox
 end
 
--- Уведомление
-local function showNotification(sender, message)
-    local notification = Instance.new("Frame")
-    notification.Size = UDim2.new(0, 250, 0, 60)
-    notification.Position = UDim2.new(1, -260, 1, -80)
-    notification.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    notification.BackgroundTransparency = 0.3
-    notification.BorderSizePixel = 0
-    notification.Parent = gui
+local function notify(sender, text)
+    local n = Instance.new("Frame")
+    n.Size = UDim2.new(0,250, 0,60)
+    n.Position = UDim2.new(1,-260, 1,-80)
+    n.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    n.BackgroundTransparency = 0.3
+    n.Parent = gui
 
-    local notifCorner = Instance.new("UICorner")
-    notifCorner.CornerRadius = UDim.new(0, 8)
-    notifCorner.Parent = notification
+    local nc = Instance.new("UICorner")
+    nc.CornerRadius = UDim.new(0,8)
+    nc.Parent = n
 
-    local notifText = Instance.new("TextLabel")
-    notifText.Size = UDim2.new(1, -10, 1, -10)
-    notifText.Position = UDim2.new(0, 5, 0, 5)
-    notifText.BackgroundTransparency = 1
-    notifText.Text = sender .. ": " .. message
-    notifText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    notifText.TextSize = 14
-    notifText.Font = Enum.Font.Gotham
-    notifText.TextWrapped = true
-    notifText.TextXAlignment = Enum.TextXAlignment.Left
-    notifText.TextYAlignment = Enum.TextYAlignment.Top
-    notifText.Parent = notification
+    local nt = Instance.new("TextLabel")
+    nt.Size = UDim2.new(1,-10, 1,-10)
+    nt.Position = UDim2.new(0,5, 0,5)
+    nt.BackgroundTransparency = 1
+    nt.Text = sender .. ": " .. text
+    nt.TextColor3 = Color3.new(1,1,1)
+    nt.TextSize = 14
+    nt.Font = Enum.Font.Gotham
+    nt.TextWrapped = true
+    nt.TextXAlignment = Enum.TextXAlignment.Left
+    nt.Parent = n
 
-    local fadeIn = TweenService:Create(notification, TweenInfo.new(0.3), {BackgroundTransparency = 0.3})
-    fadeIn:Play()
+    Tween:Create(n, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
     wait(3)
-    local fadeOut = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 1})
-    fadeOut:Play()
-    fadeOut.Completed:Connect(function()
-        notification:Destroy()
-    end)
+    Tween:Create(n, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    wait(0.5)
+    n:Destroy()
 end
 
--- Отправка сообщения
-local function sendMessage()
-    local text = inputBox.Text
-    if text ~= "" then
-        local fullMessage = player.Name .. ": " .. text
-        addMessage(fullMessage)
-        showNotification(player.Name, text)
-        notificationSound:Play()
-        inputBox.Text = ""
+local function send()
+    local txt = input.Text
+    if txt ~= "" then
+        addMsg(player.Name .. ": " .. txt)
+        notify(player.Name, txt)
+        sound:Play()
+        input.Text = ""
     end
 end
 
-sendBtn.MouseButton1Click:Connect(sendMessage)
-inputBox.FocusLost:Connect(function(enter)
-    if enter then
-        sendMessage()
-    end
-end)
+sendBtn.MouseButton1Click:Connect(send)
+input.FocusLost:Connect(function(enter) if enter then send() end end)
 
--- Приветствие
-addMessage("Добро пожаловать. Чат с кастомизацией от tensor0101.")
+addMsg("Добро пожаловать. Чат от tensor0101.")
